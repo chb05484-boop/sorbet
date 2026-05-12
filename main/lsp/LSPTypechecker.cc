@@ -583,6 +583,7 @@ bool LSPTypechecker::runSlowPath(LSPFileUpdates &updates, unique_ptr<const Owned
         auto strata = pipeline::computePackageStrata(*this->gs, packageIndexed, workspaceFilesSpan, this->config->opts);
         this->fileToStratum = move(strata.fileToStratum);
         this->lastStratum = core::packages::Stratum(strata.strata.size() - 1);
+        this->gs->preallocateForStrata(strata.strata.size());
 
         // Determine which stratum this edit will be checked at, so that we have a good reference for when to switch
         // to the SlowPathNonBlocking status. This isn't exactly correct, as you could switch to editing a file in an
