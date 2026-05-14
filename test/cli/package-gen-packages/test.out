@@ -15,6 +15,14 @@ A/__package.rb:3: `A` is missing imports https://srb.help/3734
      5 |  layer 'app'
                      ^
 
+PackageWithIgnore/__package.rb:3: `PackageWithIgnore` is missing imports https://srb.help/3734
+     3 |class PackageWithIgnore < PackageSpec
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Autocorrect: Done
+    PackageWithIgnore/__package.rb:5: Inserted `import F`
+     5 |  layer 'util'
+                      ^
+
 G/__package.rb:3: `G` is missing exports https://srb.help/3734
      3 |class G < PackageSpec
         ^^^^^^^^^^^^^^^^^^^^^
@@ -185,12 +193,21 @@ end
 class PackageWithIgnore < PackageSpec
   strict_dependencies 'false'
   layer 'util'
+  import F
 end
 ##############################
 ###### Package directed ######
 ##############################
 
 ###### Running gen-packages ######
+PackageWithIgnore/__package.rb:3: `PackageWithIgnore` is missing imports https://srb.help/3734
+     3 |class PackageWithIgnore < PackageSpec
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Autocorrect: Done
+    PackageWithIgnore/__package.rb:5: Inserted `import F`
+     5 |  layer 'util'
+                      ^
+
 B/__package.rb:3: `B` is missing `visible_to`s https://srb.help/3734
      3 |class B < PackageSpec
         ^^^^^^^^^^^^^^^^^^^^^
@@ -372,4 +389,5 @@ end
 class PackageWithIgnore < PackageSpec
   strict_dependencies 'false'
   layer 'util'
+  import F
 end

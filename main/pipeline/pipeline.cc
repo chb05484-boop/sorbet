@@ -195,6 +195,11 @@ core::StrictLevel decideStrictLevel(const core::GlobalState &gs, const core::Fil
         level = core::StrictLevel::False;
     }
 
+    if (gs.packageDB().genPackagesMode() != core::packages::GenPackagesMode::Disabled &&
+        level < core::StrictLevel::False) {
+        level = core::StrictLevel::False;
+    }
+
     return level;
 }
 
