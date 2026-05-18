@@ -460,6 +460,23 @@ class Opus::Types::Test::DSLMethodsTest < Critic::Unit::UnitTest
     end
   end
 
+  describe "hooks install correctly with only T::Sig::DSL (no T::Sig)" do
+    MODULE_INCLUDE_T_SIG_DSL_FIXTURE = "#{__dir__}/fixtures/module_include_t_sig_dsl.rb"
+
+    it "sigs and DSL methods work when Module includes T::Sig::DSL" do
+      result, status = Open3.capture2("ruby", MODULE_INCLUDE_T_SIG_DSL_FIXTURE)
+      assert(status.success?, "ruby failed (exit #{status.exitstatus}):\n#{result}")
+      assert_equal(<<~EXPECTED, result)
+        called A#foo
+        Expected type Integer, got type String with value "nope"
+        called A.bar
+        Expected type Symbol, got type Float with value 0.0
+        called B#baz
+        42
+      EXPECTED
+    end
+  end
+
   describe "type error for non-symbol" do
     it "abstract raises TypeError for non-Symbol" do
       err = assert_raises(TypeError) do
