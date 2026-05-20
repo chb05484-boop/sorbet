@@ -119,7 +119,8 @@ void setGlobalStateOptions(core::GlobalState &gs, const options::Options &opts) 
 #endif
 }
 
-unique_ptr<core::GlobalState> copyForSlowPath(const core::GlobalState &from, const options::Options &opts) {
+unique_ptr<core::GlobalState> copyForSlowPath(const core::GlobalState &from, const options::Options &opts,
+                                              core::packages::Stratum forStratum) {
     if (opts.cacheSensitiveOptions.noStdlib) {
         auto result = make_unique<core::GlobalState>(from.errorQueue, from.epochManager);
         result->initEmpty();
@@ -132,7 +133,10 @@ unique_ptr<core::GlobalState> copyForSlowPath(const core::GlobalState &from, con
         opts.allowRelaxedPackagerChecksFor, opts.updateVisibilityFor, opts.packagerLayers, opts.sorbetPackagesHint,
         opts.genPackagesMode, opts.allowRelaxingTestVisibility, opts.packageAttributedErrors, opts.testPackages);
 
-    core::serialize::Serializer::loadSymbolTable(*result, PAYLOAD_SYMBOL_TABLE);
+    // Fall back on initializing from the payload if we're not copying part of from's symbol table.
+    if (!result->copySymbolTableFrom(from, forStratum)) {
+        core::serialize::Serializer::loadSymbolTable(*result, PAYLOAD_SYMBOL_TABLE);
+    }
 
     return result;
 }
@@ -1330,7 +1334,7 @@ class CFGCollectorAndTyper {
     const options::Options &opts;
 
 public:
-    CFGCollectorAndTyper(const options::Options &opts) : opts(opts){};
+    CFGCollectorAndTyper(const options::Options &opts) : opts(opts) {};
 
     void preTransformMethodDef(core::Context ctx, const ast::MethodDef &m) {
         if (!infer::Inference::willRun(ctx, m.declLoc, m.symbol)) {

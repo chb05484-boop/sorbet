@@ -484,12 +484,18 @@ bool LSPTypechecker::runSlowPath(LSPFileUpdates &updates, unique_ptr<const Owned
     ENFORCE(updates.typecheckingPath != TypecheckingPath::Fast || config->disableFastPath);
     logger->debug("Taking slow path");
 
+    core::packages::Stratum startingStratum(0);
     UnorderedSet<core::FileRef> openFiles;
     ENFORCE(this->cancellationUndoState == nullptr);
     if (cancelable) {
         timeit.setTag("cancelable", "true");
 
-        auto savedGS = std::exchange(this->gs, pipeline::copyForSlowPath(*this->gs, this->config->opts));
+        startingStratum = determineStartingStratum(*this->gs, this->fileToStratum, updates);
+        // determineStartingStratum(*this->gs, this->fileToStratum, updates);
+        config->logger->error("Starting from stratum {}", startingStratum.rawId());
+
+        auto savedGS =
+            std::exchange(this->gs, pipeline::copyForSlowPath(*this->gs, this->config->opts, startingStratum));
 
         // Seed open files with the previous set from `indexedFinalGS`
         for (auto &entry : this->indexedFinalGS) {
@@ -631,13 +637,18 @@ bool LSPTypechecker::runSlowPath(LSPFileUpdates &updates, unique_ptr<const Owned
         // to the SlowPathNonBlocking status. This isn't exactly correct, as you could switch to editing a file in an
         // earlier stratum and see requests handled by preemption before the status changes, or edit a file in a later
         // stratum and see `Loading...` despite the status.
-        auto editStratum = updatedFileRefs.empty() ? this->lastStratum
-                                                   : this->getFileStratumMapping().getStratumForFiles(updatedFileRefs);
+        auto editStratum =
+            updatedFileRefs.empty()
+                ? this->lastStratum
+                : std::max(startingStratum, this->getFileStratumMapping().getStratumForFiles(updatedFileRefs));
 
-        for (auto &stratum : strata.strata) {
+        for (auto it = strata.strata.begin() + startingStratum.rawId(); it != strata.strata.end(); ++it) {
+            auto &stratum = *it;
+
+
+            stratumIx = std::distance(strata.strata.begin(), it);
+            core::packages::Stratum currentStratum(stratumIx);
             vector<ast::ParsedFile> stratumFiles, nonPackagedIndexed;
-
-            core::packages::Stratum currentStratum(++stratumIx);
 
             // When we unpartition the package and non-package files, we'll realloc stratumFiles to hold everything.
             stratumFiles.reserve(stratum.packageFiles.size() + stratum.sourceFiles.size());
