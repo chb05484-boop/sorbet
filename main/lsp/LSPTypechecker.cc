@@ -354,6 +354,48 @@ LSPTypechecker::FastPathResult LSPTypechecker::runFastPath(LSPFileUpdates &updat
 
 namespace {
 
+// Determine how much of the symbol table we can copy when starting a slow path edit: any __package.rb modification
+// means that we can't reuse the symbol table.
+core::packages::Stratum determineStartingStratum(const core::GlobalState &gs,
+                                                 const vector<core::packages::Stratum> &fileToStratum,
+                                                 const LSPFileUpdates &update) {
+    // We can't copy anything if package files were modified.
+    if (absl::c_any_of(update.updatedFiles, [](auto &file) { return file->hasPackageRbPath(); })) {
+        return core::packages::Stratum(0);
+    }
+
+    core::packages::Stratum startingStratum(0);
+    int ix = -1;
+    for (auto &file : update.updatedFiles) {
+        ++ix;
+
+        auto fref = update.updatedFileRefs[ix];
+
+        core::packages::Stratum fileStratum;
+
+        // If this is a new file, we can still copy a prefix if we can determine what package it would belong to.
+        if (fref.id() >= fileToStratum.size()) {
+            auto pkg = gs.packageDB().findPackageByPath(gs, *file);
+            if (!pkg.exists()) {
+                return core::packages::Stratum(0);
+            }
+
+            auto &info = gs.packageDB().getPackageInfo(pkg);
+            ENFORCE(info.exists());
+
+            // We have already checked for new package files above, so this should always be true.
+            ENFORCE(info.file.id() < fileToStratum.size());
+            fileStratum = fileToStratum[info.file.id()];
+        } else {
+            fileStratum = fileToStratum[fref.id()];
+        }
+
+        startingStratum = std::max(startingStratum, fileStratum);
+    }
+
+    return startingStratum;
+}
+
 // Determine which files we need to copy into the open files cache (indexedFinalGS), and update the file table to point
 // to the updated files.
 void applyFileTableUpdates(core::GlobalState &gs, vector<core::FileRef> &workspaceFiles, const LSPConfiguration &config,
